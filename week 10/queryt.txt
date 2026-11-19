@@ -1,0 +1,196 @@
+SQL Solution: Banking Database
+a) Create the tables with primary keys and foreign keys
+The following SQL statements create all six tables with appropriate primary key and foreign key constraints.
+
+sql
+CREATE TABLE BRANCH (
+    branch_name VARCHAR(50) PRIMARY KEY,
+    branch_city VARCHAR(50),
+    assets REAL
+);
+
+CREATE TABLE ACCOUNT (
+    accno INT PRIMARY KEY,
+    branch_name VARCHAR(50),
+    balance REAL,
+    FOREIGN KEY (branch_name)
+        REFERENCES BRANCH(branch_name)
+);
+
+CREATE TABLE CUSTOMER (
+    customer_name VARCHAR(50) PRIMARY KEY,
+    customer_street VARCHAR(100),
+    customer_city VARCHAR(50)
+);
+
+CREATE TABLE DEPOSITOR (
+    customer_name VARCHAR(50),
+    accno INT,
+    PRIMARY KEY (customer_name, accno),
+    FOREIGN KEY (customer_name)
+        REFERENCES CUSTOMER(customer_name),
+    FOREIGN KEY (accno)
+        REFERENCES ACCOUNT(accno)
+);
+
+CREATE TABLE LOAN (
+    loan_number INT PRIMARY KEY,
+    branch_name VARCHAR(50),
+    amount REAL,
+    FOREIGN KEY (branch_name)
+        REFERENCES BRANCH(branch_name)
+);
+
+CREATE TABLE BORROWER (
+    customer_name VARCHAR(50),
+    loan_number INT,
+    PRIMARY KEY (customer_name, loan_number),
+    FOREIGN KEY (customer_name)
+        REFERENCES CUSTOMER(customer_name),
+    FOREIGN KEY (loan_number)
+        REFERENCES LOAN(loan_number)
+);
+b) Insert at least five tuples into each relation
+Insert the data in the following order to satisfy foreign key constraints.
+
+1. BRANCH
+sql
+INSERT INTO BRANCH VALUES
+('Main', 'Delhi', 5000000),
+('Park Street', 'Kolkata', 3000000),
+('City Center', 'Delhi', 4000000),
+('Lake View', 'Mumbai', 2500000),
+('Central', 'Kolkata', 3500000);
+2. CUSTOMER
+sql
+INSERT INTO CUSTOMER VALUES
+('Amit', 'MG Road', 'Delhi'),
+('Priya', 'Park Road', 'Kolkata'),
+('Rahul', 'Lake Road', 'Mumbai'),
+('Sneha', 'Nehru Street', 'Delhi'),
+('Vikas', 'Gandhi Road', 'Kolkata');
+3. ACCOUNT
+sql
+INSERT INTO ACCOUNT VALUES
+(101, 'Main', 15000),
+(102, 'Main', 20000),
+(103, 'Main', 12000),
+(104, 'Park Street', 18000),
+(105, 'City Center', 25000),
+(106, 'Lake View', 30000),
+(107, 'Central', 22000),
+(108, 'Park Street', 16000);
+4. DEPOSITOR
+sql
+INSERT INTO DEPOSITOR VALUES
+('Amit', 101),
+('Amit', 102),
+('Amit', 104),
+('Priya', 103),
+('Priya', 104),
+('Priya', 107),
+('Rahul', 106),
+('Sneha', 105),
+('Vikas', 108);
+5. LOAN
+sql
+INSERT INTO LOAN VALUES
+(201, 'Main', 100000),
+(202, 'Park Street', 150000),
+(203, 'City Center', 200000),
+(204, 'Lake View', 120000),
+(205, 'Central', 180000);
+6. BORROWER
+sql
+INSERT INTO BORROWER VALUES
+('Amit', 201),
+('Priya', 202),
+('Rahul', 204),
+('Sneha', 203),
+('Vikas', 205);
+c) Find all customers who have at least two accounts at the main branch
+SQL query:
+
+sql
+SELECT D.customer_name
+FROM DEPOSITOR D
+JOIN ACCOUNT A ON D.accno = A.accno
+WHERE A.branch_name = 'Main'
+GROUP BY D.customer_name
+HAVING COUNT(DISTINCT D.accno) >= 2;
+Explanation:
+
+Join DEPOSITOR and ACCOUNT to identify the branch for each customer's account.
+
+Filter accounts belonging to the Main branch.
+
+Group records by customer.
+
+Use HAVING to select customers who have at least two distinct accounts.
+
+Expected output:
+
+customer_name
+
+Amit
+
+Amit has accounts 101 and 102 at the Main branch.
+
+d) Find all customers who have an account at all branches in a specific city
+For example, find customers who have an account at every branch in Delhi.
+
+SQL query (using double NOT EXISTS):
+
+sql
+SELECT C.customer_name
+FROM CUSTOMER C
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM BRANCH B
+    WHERE B.branch_city = 'Delhi'
+      AND NOT EXISTS (
+          SELECT 1
+          FROM DEPOSITOR D
+          JOIN ACCOUNT A ON D.accno = A.accno
+          WHERE D.customer_name = C.customer_name
+            AND A.branch_name = B.branch_name
+      )
+);
+Explanation:
+
+The outer NOT EXISTS checks that no required branch is missing from the customer's accounts.
+
+The inner NOT EXISTS finds a branch in Delhi where the customer does not have an account.
+
+Therefore, the query returns customers who have an account at every branch in Delhi.
+
+Expected output for the sample data: No rows, because Delhi has two branches (Main and City Center), and no customer has accounts at both branches.
+
+e) Delete all account tuples at every branch located in a specific city
+For example, delete all accounts belonging to branches located in Delhi.
+
+Since DEPOSITOR references ACCOUNT, delete the corresponding depositor records first to avoid foreign key violations.
+
+sql
+DELETE FROM DEPOSITOR
+WHERE accno IN (
+    SELECT A.accno
+    FROM ACCOUNT A
+    JOIN BRANCH B
+      ON A.branch_name = B.branch_name
+    WHERE B.branch_city = 'Delhi'
+);
+
+DELETE FROM ACCOUNT
+WHERE branch_name IN (
+    SELECT branch_name
+    FROM BRANCH
+    WHERE branch_city = 'Delhi'
+);
+Explanation:
+
+The first statement deletes the depositor records associated with accounts at Delhi branches.
+
+The second statement deletes all accounts belonging to branches located in Delhi.
+
+The BRANCH records themselves are not deleted.
